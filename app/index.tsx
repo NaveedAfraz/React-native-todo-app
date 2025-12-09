@@ -1,13 +1,28 @@
+import { useTheme } from "@/context/themeContext";
+import { useTodos } from "@/context/todoContext";
+import {
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  useFonts,
+} from "@expo-google-fonts/inter";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import Octicons from "@expo/vector-icons/Octicons";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    FlatList,
-    Text as RNText,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Pressable,
+  Text as RNText,
+  StatusBar,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { data } from "../data/todos";
+import Animated, {
+  FadeInDown,
+  LinearTransition,
+} from "react-native-reanimated";
 
 type PriorityLevel = {
   key: string;
@@ -17,30 +32,36 @@ type PriorityLevel = {
 };
 
 function Index() {
-  const [todos, setTodos] = useState(data);
+  const router = useRouter();
+  const {
+    todos,
+    loading,
+    addTodo: addTodoHook,
+    toggleTodo,
+    deleteTodo,
+  } = useTodos();
   const [newTodo, setNewTodo] = useState({
-    id: "",
     title: "",
-    priority: "",
-    completed: "",
+    priority: "medium",
   });
-  console.log(todos);
-  const addTodo = () => {
-    if (newTodo.title.trim() != "") {
-      const newID = todos.length + 1;
+  const { theme, colors, toggleTheme } = useTheme();
+  const [loaded, error] = useFonts({
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
 
-      setTodos([
-        ...todos,
-        {
-          id: newID.toString(),
-          title: newTodo.title,
-          priority: newTodo.priority,
-          completed: false,
-        },
-      ]);
-      setNewTodo({ id: "", title: "", priority: "", completed: "" });
+  if ((!loaded && error) || loading) {
+    return null;
+  }
+
+  const handleAddTodo = async () => {
+    if (newTodo.title.trim()) {
+      await addTodoHook(newTodo.title, newTodo.priority);
+      setNewTodo({ title: "", priority: "medium" });
     }
   };
+
   const priorityLevels: PriorityLevel[] = [
     { key: "high", label: "High", color: "#FF3B30", icon: "alert-circle" },
     { key: "medium", label: "Medium", color: "#FF9500", icon: "alert" },
@@ -48,48 +69,69 @@ function Index() {
   ];
 
   const getPriorityColor = (priority: string) => {
-    const level = priorityLevels.find(p => p.key === priority);
+    const level = priorityLevels.find((p) => p.key === priority);
     return level ? level.color : "#8E8E93";
-  };
-  const deleteTodo = (id: string) => {
-    setTodos(todos.filter((todo) => todo.id != id));
-  };
-  const EditTodo = (id: string) => {
-    const todo = todos.find((todo) => todo.id === id);
-    if (todo) {
-      setNewTodo({
-        id: todo.id,
-        title: todo.title,
-        priority: todo.priority,
-        completed: todo.completed.toString(),
-      });
-    }
   };
 
   return (
-    <View style={{ padding: 20 }}>
-      <RNText style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>
-        React Native Todo
-      </RNText>
-
+    <View
+      style={{
+        height: "100%",
+        padding: 20,
+        backgroundColor: colors.background,
+      }}
+    >
+      <StatusBar
+        backgroundColor={colors.background}
+        barStyle={theme === "dark" ? "light-content" : "dark-content"}
+      />
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 20,
+        }}
+      >
+        <RNText
+          style={{
+            fontSize: 24,
+            fontWeight: "bold",
+            fontFamily: "Inter_700Bold",
+            color: colors.text,
+          }}
+        >
+          React Native Todo
+        </RNText>
+        <Pressable onPress={toggleTheme}>
+          {theme === "dark" ? (
+            <Octicons name="moon" size={20} color={colors.text} />
+          ) : (
+            <Octicons name="sun" size={20} color={colors.text} />
+          )}
+        </Pressable>
+      </View>
       <View style={{ marginBottom: 20 }}>
         <View style={{ flexDirection: "row", marginBottom: 10 }}>
           <TextInput
             style={{
               flex: 1,
               borderWidth: 1,
-              borderColor: "#ccc",
+              borderColor: colors.border,
               padding: 10,
               marginRight: 10,
               borderRadius: 5,
+              backgroundColor: colors.card,
+              color: colors.text,
             }}
             value={newTodo.title}
             onChangeText={(text) => setNewTodo({ ...newTodo, title: text })}
             placeholder="Add a new todo..."
+            placeholderTextColor={colors.icon}
           />
-          <TouchableOpacity
+          <Pressable
             style={{
-              backgroundColor: "#007AFF",
+              backgroundColor: colors.primary,
               padding: 10,
               borderRadius: 5,
               justifyContent: "center",
@@ -97,14 +139,16 @@ function Index() {
               width: 40,
               height: 40,
             }}
-            onPress={addTodo}
+            onPress={handleAddTodo}
           >
             <MaterialCommunityIcons name="plus" size={20} color="white" />
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <RNText style={{ marginRight: 10, fontSize: 16 }}>Priority:</RNText>
+          <RNText style={{ marginRight: 10, fontSize: 16, color: colors.text }}>
+            Priority:
+          </RNText>
           <FlatList
             data={priorityLevels}
             keyExtractor={(item) => item.key}
@@ -117,7 +161,8 @@ function Index() {
                   flex: 1,
                   padding: 10,
                   borderWidth: 1,
-                  borderColor: newTodo.priority === item.key ? item.color : "#ccc",
+                  borderColor:
+                    newTodo.priority === item.key ? item.color : "#ccc",
                   borderRadius: 5,
                   backgroundColor:
                     newTodo.priority === item.key ? item.color : "#f9f9f9",
@@ -134,7 +179,8 @@ function Index() {
                 <RNText
                   style={{
                     color: newTodo.priority === item.key ? "white" : item.color,
-                    fontWeight: newTodo.priority === item.key ? "bold" : "normal",
+                    fontWeight:
+                      newTodo.priority === item.key ? "bold" : "normal",
                     fontSize: 12,
                     marginTop: 2,
                   }}
@@ -147,41 +193,72 @@ function Index() {
         </View>
       </View>
 
-      <FlatList
+      <Animated.FlatList
         data={todos}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View
+        itemLayoutAnimation={LinearTransition.duration(300)}
+        renderItem={({ item, index }) => (
+          <Animated.View
             style={{
               flexDirection: "row",
               alignItems: "center",
               padding: 15,
               borderBottomWidth: 1,
-              borderBottomColor: "#eee",
-              backgroundColor: "white",
+              borderBottomColor: colors.border,
+              backgroundColor: colors.card,
             }}
+            entering={FadeInDown.duration(400).delay(index * 100)}
           >
-            <View style={{ flex: 1 }}>
-              <RNText style={{ fontSize: 16 }}>{item.title}</RNText>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginTop: 5,
-                }}
-              >
+            <Pressable
+              style={{ flex: 1 }}
+              onPress={() => router.push(`/todos/${item.id}` as any)}
+              onLongPress={() => toggleTodo(item.id)}
+            >
+              <View style={{ flex: 1 }}>
                 <RNText
                   style={{
-                    fontSize: 12,
-                    color: getPriorityColor(item.priority),
-                    fontWeight: "bold",
-                    textTransform: "uppercase",
+                    fontSize: 16,
+                    color: colors.text,
+                    textDecorationLine: item.completed
+                      ? "line-through"
+                      : "none",
+                    opacity: item.completed ? 0.6 : 1,
                   }}
                 >
-                  {item.priority || "no priority"}
+                  {item.title}
                 </RNText>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: 5,
+                  }}
+                >
+                  <RNText
+                    style={{
+                      fontSize: 12,
+                      color: getPriorityColor(item.priority),
+                      fontWeight: "bold",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {item.priority || "no priority"}
+                  </RNText>
+                  {item.completed && (
+                    <RNText
+                      style={{
+                        fontSize: 12,
+                        color: colors.success,
+                        fontWeight: "bold",
+                        marginLeft: 10,
+                      }}
+                    >
+                      ✓ Completed
+                    </RNText>
+                  )}
+                </View>
               </View>
-            </View>
+            </Pressable>
             <TouchableOpacity
               style={{
                 backgroundColor: "#34C759",
@@ -193,7 +270,7 @@ function Index() {
                 width: 40,
                 height: 40,
               }}
-              onPress={() => EditTodo(item.id)}
+              onPress={() => router.push(`/todos/${item.id}` as any)}
             >
               <MaterialCommunityIcons name="pencil" size={16} color="white" />
             </TouchableOpacity>
@@ -209,9 +286,13 @@ function Index() {
               }}
               onPress={() => deleteTodo(item.id)}
             >
-              <MaterialCommunityIcons name="trash-can" size={16} color="white" />
+              <MaterialCommunityIcons
+                name="trash-can"
+                size={16}
+                color="white"
+              />
             </TouchableOpacity>
-          </View>
+          </Animated.View>
         )}
       />
     </View>
