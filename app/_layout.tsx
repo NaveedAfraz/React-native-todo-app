@@ -6,7 +6,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <Stack>
-        <Stack.Screen name="index" options={{ title: "Todos" }} />
+        <Stack.Screen name="index" options={{ title: "React Native Todo" }} />
       </Stack>
     </SafeAreaProvider>
   );

@@ -69,7 +69,7 @@ function Index() {
   return (
     <View style={{ padding: 20 }}>
       <RNText style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>
-        Todo List
+        React Native Todo
       </RNText>
 
       <View style={{ marginBottom: 20 }}>
